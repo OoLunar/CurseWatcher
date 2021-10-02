@@ -45,7 +45,7 @@ namespace CurseWatcher
             Logger = loggerConfiguration.CreateLogger();
 
             DbContextOptionsBuilder<CurseWatcherContext> options = new();
-            options.UseSqlite("Data Source=dev.db");
+            options.UseSqlite("Data Source=projects.db");
             options.EnableDetailedErrors();
             options.EnableSensitiveDataLogging();
             DbContextOptions = options.Options;

@@ -8,7 +8,7 @@ Copy [`config.json`](./res/config.json) to `config.json.prod`, and fill out the 
 ### Docker
 Based off of Alpine.
 ```bash
-docker run ghcr.io/oolunar/tomoe --mount ./config.json.prod,/src/res/config.json.prod
+docker run ghcr.io/oolunar/tomoe --mount ./config.json.prod,/src/res/config.json.prod --mount ./projects.db,/src/projects.db
 ```
 
 ### Docker Compose
@@ -20,6 +20,7 @@ services:
     image: ghcr.io/oolunar/curse-watcher:latest
     volumes:
       - ./config.json.prod:/src/res/config.json.prod
+      - ./projects.db:/src/projects.db
     restart: unless-stopped
 ```
 
