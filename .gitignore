@@ -1,6 +1,6 @@
 .vscode/
-bin/
 logs/
+bin/
 obj/
 res/config.json.prod
 *.db

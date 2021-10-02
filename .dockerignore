@@ -1,0 +1,7 @@
+.github/
+.vscode/
+logs/
+bin/
+obj/
+res/config.json
+*.db

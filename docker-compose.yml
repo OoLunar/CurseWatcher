@@ -1,0 +1,8 @@
+version: "3.9"
+
+services:
+  curse-watcher:
+    build: .
+    volumes:
+      - ./config.json.prod:/src/res/config.json.prod
+    restart: unless-stopped
