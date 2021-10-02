@@ -1,0 +1,6 @@
+.vscode/
+bin/
+logs/
+obj/
+res/config.json.prod
+*.db

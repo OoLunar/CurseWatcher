@@ -1,0 +1,18 @@
+{
+    "project_ids": [
+        306612,
+        360438,
+        394468
+    ],
+    "discord_webook": "https://discord.com/api/webhooks/{channel_id}/{webhook_token}",
+    "poll_interval": "6h",
+    "logging": {
+        "level": "Debug",
+        "format": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u4}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+        "rolling_interval": "Day",
+        "overrides": {
+            "Microsoft": "Warning",
+            "CurseForgeTracker": "Information"
+        }
+    }
+}
