@@ -11,8 +11,8 @@ namespace CurseWatcher
         public int Id { get; set; }
 
         /// <summary>
-        /// The default file id, presumed to be the latest file id.
+        /// The latest file id.
         /// </summary>
-        public int DefaultFileId { get; set; }
+        public int LatestFileId { get; set; }
     }
 }

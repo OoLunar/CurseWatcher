@@ -5,14 +5,14 @@
         394468
     ],
     "discord_webook": "https://discord.com/api/webhooks/{channel_id}/{webhook_token}",
-    "poll_interval": "6h",
+    "poll_interval": "6:00:00",
     "logging": {
         "level": "Debug",
         "format": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u4}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
         "rolling_interval": "Day",
         "overrides": {
             "Microsoft": "Warning",
-            "CurseForgeTracker": "Information"
+            "CurseWatcher": "Information"
         }
     }
 }

@@ -2,27 +2,26 @@
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Timers;
+using DSharpPlus;
+using DSharpPlus.Entities;
 using ForgedCurse;
 using ForgedCurse.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
-using Serilog.Core;
 using Serilog.Events;
+using Serilog.Extensions.Logging;
 
 namespace CurseWatcher
 {
     public class Program
     {
-        private static IConfiguration Configuration { get; set; }
-        private static Logger Logger { get; set; }
         private static DbContextOptions<CurseWatcherContext> DbContextOptions { get; set; }
-        private static HttpClient HttpClient { get; set; } = new();
+        private static IConfiguration Configuration { get; set; }
+        private static ILogger Logger { get; set; }
 
         public static void Main(string[] args)
         {
@@ -42,7 +41,8 @@ namespace CurseWatcher
             {
                 loggerConfiguration.MinimumLevel.Override(logOverride.Key, Enum.Parse<LogEventLevel>(logOverride.Value));
             }
-            Logger = loggerConfiguration.CreateLogger();
+            Log.Logger = loggerConfiguration.CreateLogger();
+            Logger = Log.Logger.ForContext<Program>();
 
             DbContextOptionsBuilder<CurseWatcherContext> options = new();
             options.UseSqlite("Data Source=projects.db");
@@ -69,33 +69,79 @@ namespace CurseWatcher
 
         public static async void UpdateProjects(object sender = null, ElapsedEventArgs e = null)
         {
+            Logger.Information("Updating mods...");
+
             CurseWatcherContext context = new(DbContextOptions);
             ForgeClient client = new();
-            Addon[] addons = await client.Addons.RetriveAddons(Configuration.GetSection("project_ids").Get<int[]>());
+            Addon[] addons;
+            try
+            {
+                addons = await client.Addons.RetriveAddons(Configuration.GetSection("project_ids").Get<int[]>());
+            }
+            catch (AggregateException)
+            {
+                Logger.Warning("Failed to connect to CurseForge. Trying again...");
+                UpdateProjects();
+                return;
+            }
+
+            DiscordWebhookClient webhookClient = new(timeout: TimeSpan.FromSeconds(30), loggerFactory: new SerilogLoggerFactory().AddSerilog(Logger));
+            DiscordWebhook webhook = await webhookClient.AddWebhookAsync(Configuration.GetValue<Uri>("discord_webhook"));
+
             foreach (Addon addon in addons)
             {
+                GameVersionLatestRelease addonFile = addon.Files.First();
                 Project project = context.Projects.FirstOrDefault(project => project.Id == addon.Identifier);
+                if (project != null && project.LatestFileId == addonFile.FileId)
+                {
+                    continue;
+                }
+
+                DiscordEmbedBuilder embedBuilder = new()
+                {
+                    Title = addon.Name,
+                    Url = $"{string.Join('/', addon.Categories[0].CurseForgeUrl.Split('/').Reverse().Skip(1).Reverse())}/{addon.Slug}/download/{addonFile.FileId}/file"
+                };
+
+                embedBuilder.AddField("Game Version", addonFile.GameVersion, true);
+                embedBuilder.AddField("File Name", addonFile.FileName, true);
+                if (addon.Attachments.Length != 0)
+                {
+                    embedBuilder.WithThumbnail(addon.Attachments[0].Url);
+                }
+
+                DiscordWebhookBuilder webhookBuilder = new();
+                webhookBuilder.AddEmbed(embedBuilder);
+
                 if (project == null)
                 {
-                    Logger.Information($"Creating {addon.Name} project...");
+                    Logger.Information("Creating {addonName} project...", addon.Name);
                     project = new()
                     {
                         Id = addon.Identifier,
-                        DefaultFileId = addon.DefaultFileId
+                        LatestFileId = addonFile.FileId
                     };
-                    HttpResponseMessage responseMessage = await HttpClient.PostAsJsonAsync(Configuration.GetValue<Uri>("discord_webhook"), new { embeds = new[] { new { title = addon.Name, description = addon.Files.First().FileName, url = $"{string.Join('/', addon.Categories[0].CurseForgeUrl.Split('/').Reverse().Skip(1).Reverse())}/{addon.Slug}/download/{addon.DefaultFileId}/file" } }, content = "Tracking new CurseForge project..." });
+
+                    webhookBuilder.Content = "Tracking new CurseForge project...";
+                    await webhook.ExecuteAsync(webhookBuilder);
+
                     context.Projects.Add(project);
                     await context.SaveChangesAsync();
                 }
-                else if (project.DefaultFileId != addon.DefaultFileId)
+                else if (project.LatestFileId != addonFile.FileId)
                 {
-                    Logger.Information($"{addon.Name} has an update!");
-                    HttpResponseMessage responseMessage = await HttpClient.PostAsJsonAsync(Configuration.GetValue<Uri>("discord_webhook"), new { embeds = new[] { new { title = addon.Name, description = addon.Files.First().FileName, url = $"{string.Join('/', addon.Categories[0].CurseForgeUrl.Split('/').Reverse().Skip(1).Reverse())}/{addon.Slug}/download/{addon.DefaultFileId}/file" } }, content = "New CurseForge project update!" });
-                    project.DefaultFileId = addon.DefaultFileId;
+                    Logger.Information("{addonName} has an update!", addon.Name);
+
+                    webhookBuilder.Content = $"{addon.Name} has an update!";
+                    await webhook.ExecuteAsync(webhookBuilder);
+
+                    project.LatestFileId = addonFile.FileId;
                     context.Projects.Update(project);
                     await context.SaveChangesAsync();
                 }
             }
+
+            Logger.Information("Mods updated!");
         }
 
         public static string GetSourceFilePathName([CallerFilePath] string callerFilePath = null) => string.IsNullOrEmpty(callerFilePath) ? "" : callerFilePath;

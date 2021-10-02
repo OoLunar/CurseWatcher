@@ -4,6 +4,7 @@
         <TargetFramework>net5.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="DSharpPlus" Version="4.1.0" />
         <PackageReference Include="ForgedCurse" Version="2.0.0" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.10" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="5.0.10" />
